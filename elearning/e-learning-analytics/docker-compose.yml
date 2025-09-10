@@ -1,0 +1,157 @@
+# docker-compose.yml
+
+version: "3.9"
+
+# ────────────────────────────────
+# E-Learning Analytics Platform
+# Base infrastructure with service stubs
+# ────────────────────────────────
+services:
+  # ────────────────────────────────
+  # API Gateway - Nginx
+  # Handles TLS termination, routing, rate limiting
+  # ────────────────────────────────
+  nginx:
+    image: nginx:1.25
+    container_name: api-gateway
+    ports:
+      - "80:80"        # HTTP
+      - "443:443"      # HTTPS (later with certs)
+    volumes:
+      - ./deploy/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - auth-service
+      # - course-service
+      # - progress-service
+      # - analytics-service
+    networks:
+      - elearn_net
+
+  # ────────────────────────────────
+  # Authentication Service (Go)
+  # JWT issuing, refresh, blacklisting
+  # ────────────────────────────────
+  auth-service:
+    build: ./services/auth
+    container_name: auth-service
+    environment:
+      - DB_URI=mongodb://mongodb:27017
+      - REDIS_URL=redis:6379
+      - JWT_SECRET=supersecretkey
+    networks:
+      - elearn_net
+    depends_on:
+      - mongodb
+      - redis
+
+  # ────────────────────────────────
+  # Course Service (Go)
+  # Course CRUD, caching, search
+  # ────────────────────────────────
+  # course-service:
+  #   build: ./services/course
+  #   container_name: course-service
+  #   environment:
+  #     - DB_URI=mongodb://mongodb:27017
+  #     - REDIS_URL=redis:6379
+  #   networks:
+  #     - elearn_net
+  #   depends_on:
+  #     - mongodb
+  #     - redis
+
+  # # ────────────────────────────────
+  # # Progress Service (Go)
+  # # Student progress, dashboard
+  # # ────────────────────────────────
+  # progress-service:
+  #   build: ./services/progress
+  #   container_name: progress-service
+  #   environment:
+  #     - DB_URI=mongodb://mongodb:27017
+  #     - REDIS_URL=redis:6379
+  #   networks:
+  #     - elearn_net
+  #   depends_on:
+  #     - mongodb
+  #     - redis
+
+  # # ────────────────────────────────
+  # # Analytics Service (Go)
+  # # Course performance, background workers
+  # # ────────────────────────────────
+  # analytics-service:
+  #   build: ./services/analytics
+  #   container_name: analytics-service
+  #   environment:
+  #     - DB_URI=mongodb://mongodb:27017
+  #     - REDIS_URL=redis:6379
+  #   networks:
+  #     - elearn_net
+  #   depends_on:
+  #     - mongodb
+  #     - redis
+
+  # ────────────────────────────────
+  # MongoDB (Primary DB)
+  # Course, user, progress persistence
+  # ────────────────────────────────
+  mongodb:
+    image: mongo:6.0
+    container_name: mongo-db
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - elearn_net
+
+  # ────────────────────────────────
+  # Redis (Cache + Session Store)
+  # Key-based caching and token blacklisting
+  # ────────────────────────────────
+  redis:
+    image: redis:7.2
+    container_name: redis-cache
+    ports:
+      - "6379:6379"
+    networks:
+      - elearn_net
+
+  # ────────────────────────────────
+  # Prometheus (Metrics Collection)
+  # Scrapes metrics from services
+  # ────────────────────────────────
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./deploy/prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - elearn_net
+
+  # ────────────────────────────────
+  # Grafana (Visualization)
+  # Dashboards for metrics & logs
+  # ────────────────────────────────
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    networks:
+      - elearn_net
+    depends_on:
+      - prometheus
+
+# ────────────────────────────────
+# Networks & Volumes
+# ────────────────────────────────
+networks:
+  elearn_net:
+    driver: bridge
+
+volumes:
+  mongo_data:
