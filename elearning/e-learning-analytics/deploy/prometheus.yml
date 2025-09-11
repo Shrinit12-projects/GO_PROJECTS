@@ -1,0 +1,28 @@
+# prometheus.yml - minimal config
+
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  # Scrape Prometheus itself
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # Scrape auth-service (we'll expose /metrics later in Go)
+  - job_name: "auth-service"
+    static_configs:
+      - targets: ["auth-service:8080"]
+
+  # Other services (to be enabled once they have /metrics)
+  # - job_name: "course-service"
+  #   static_configs:
+  #     - targets: ["course-service:8080"]
+
+  # - job_name: "progress-service"
+  #   static_configs:
+  #     - targets: ["progress-service:8080"]
+
+  # - job_name: "analytics-service"
+  #   static_configs:
+  #     - targets: ["analytics-service:8080"]

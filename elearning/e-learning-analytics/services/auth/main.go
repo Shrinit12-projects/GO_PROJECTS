@@ -1,61 +1,93 @@
-// main.go - Auth Service Stub
-
+// Auth Service API
+//
+// JWT-based authentication microservice for e-learning platform
+//
+// @title Auth Service API
+// @version 1.0
+// @description JWT-based authentication microservice
+// @host localhost:8080
+// @BasePath /
+// @schemes http https
+//
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Type "Bearer" followed by a space and JWT token.
 package main
 
 import (
-	// "fmt"
+	"context"
 	"log"
-	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
-	"github.com/gorilla/mux"
+	"auth-service/internal/config"
+	"auth-service/internal/repositories"
+	"auth-service/internal/server"
+
+	_ "auth-service/docs" // swagger docs
 )
 
-// HealthHandler -> simple readiness probe
-func HealthHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte(`{"status":"ok","service":"auth-service"}`))
-}
-
 func main() {
-	// ────────────────────────────────
-	// Config from environment (12-factor style)
-	// ────────────────────────────────
-	port := getEnv("PORT", "8080")
-
-	// ────────────────────────────────
-	// Router setup
-	// ────────────────────────────────
-	r := mux.NewRouter()
-	r.HandleFunc("/health", HealthHandler).Methods("GET")
-
-	// ────────────────────────────────
-	// HTTP server setup
-	// ────────────────────────────────
-	srv := &http.Server{
-		Handler:      r,
-		Addr:         ":" + port,
-		WriteTimeout: 15 * time.Second,
-		ReadTimeout:  15 * time.Second,
-		IdleTimeout:  60 * time.Second,
+	// ─────────────────────────────────────────────
+	// Load configuration (env vars)
+	// ─────────────────────────────────────────────
+	cfg, err := config.NewConfigFromEnv()
+	if err != nil {
+		log.Fatalf("failed loading config: %v", err)
 	}
 
-	log.Printf("🚀 Auth Service running on port %s\n", port)
+	// ─────────────────────────────────────────────
+	// Initialize shared infrastructure (Mongo, Redis)
+	// ─────────────────────────────────────────────
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
-	// ────────────────────────────────
-	// Start server (blocking call)
-	// ────────────────────────────────
-	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatalf("❌ failed to start server: %v", err)
+	mongoClient, err := repositories.NewMongoClient(ctx, cfg.MongoURI)
+	if err != nil {
+		log.Fatalf("mongo connect error: %v", err)
 	}
-}
+	redisClient, err := repositories.NewRedisClient(ctx, cfg.RedisAddr, cfg.RedisPassword)
+	if err != nil {
+		_ = mongoClient.Disconnect(ctx)
+		log.Fatalf("redis connect error: %v", err)
+	}
 
-// getEnv -> helper for env var with default
-func getEnv(key, fallback string) string {
-	if value, ok := os.LookupEnv(key); ok {
-		return value
+	// Gracefully close on exit
+	defer func() {
+		shutdownCtx, c := context.WithTimeout(context.Background(), 5*time.Second)
+		defer c()
+		_ = mongoClient.Disconnect(shutdownCtx)
+		_ = redisClient.Close()
+	}()
+
+	// ─────────────────────────────────────────────
+	// Create and start HTTP server
+	// ─────────────────────────────────────────────
+	srv := server.NewServer(cfg, mongoClient, redisClient)
+
+	// run server in background goroutine
+	go func() {
+		if err := srv.Start(); err != nil {
+			log.Fatalf("server start failed: %v", err)
+		}
+	}()
+
+	// ─────────────────────────────────────────────
+	// Wait for termination signal and graceful shutdown
+	// ─────────────────────────────────────────────
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
+	<-quit
+
+	log.Println("shutdown initiated...")
+	ctxShutdown, cancelShutdown := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancelShutdown()
+	if err := srv.Shutdown(ctxShutdown); err != nil {
+		log.Printf("graceful shutdown failed: %v", err)
+	} else {
+		log.Println("server stopped gracefully")
 	}
-	return fallback
 }
