@@ -1,0 +1,208 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Auth Service - Complete Metrics Dashboard",
+    "tags": ["auth", "complete", "metrics"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Total User Registrations",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "auth_service_user_registrations_total",
+            "legendFormat": "Total Users"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "unit": "short"
+          }
+        },
+        "gridPos": {"h": 6, "w": 4, "x": 0, "y": 0}
+      },
+      {
+        "id": 2,
+        "title": "HTTP Requests Total",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "sum(auth_service_http_requests_total)",
+            "legendFormat": "Total Requests"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "unit": "short"
+          }
+        },
+        "gridPos": {"h": 6, "w": 4, "x": 4, "y": 0}
+      },
+      {
+        "id": 3,
+        "title": "Active Goroutines",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "go_goroutines",
+            "legendFormat": "Goroutines"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "unit": "short"
+          }
+        },
+        "gridPos": {"h": 6, "w": 4, "x": 8, "y": 0}
+      },
+      {
+        "id": 4,
+        "title": "Memory Usage (MB)",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "go_memstats_heap_alloc_bytes / 1024 / 1024",
+            "legendFormat": "Heap MB"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "unit": "short",
+            "decimals": 1
+          }
+        },
+        "gridPos": {"h": 6, "w": 4, "x": 12, "y": 0}
+      },
+      {
+        "id": 5,
+        "title": "Login Attempts by Result",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "auth_service_login_attempts_total{result=\"success\"}",
+            "legendFormat": "Success"
+          },
+          {
+            "expr": "auth_service_login_attempts_total{result=\"failure\"}",
+            "legendFormat": "Failure"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "unit": "short"
+          }
+        },
+        "gridPos": {"h": 6, "w": 8, "x": 16, "y": 0}
+      },
+      {
+        "id": 6,
+        "title": "HTTP Requests by Endpoint",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "sum by (endpoint) (auth_service_http_requests_total)",
+            "legendFormat": "{{endpoint}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 6}
+      },
+      {
+        "id": 7,
+        "title": "HTTP Requests by Status Code",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "sum by (status_code) (auth_service_http_requests_total)",
+            "legendFormat": "{{status_code}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 6}
+      },
+      {
+        "id": 8,
+        "title": "Request Rate (per minute)",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(auth_service_http_requests_total[1m]) * 60",
+            "legendFormat": "Requests/min"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 8, "x": 0, "y": 14}
+      },
+      {
+        "id": 9,
+        "title": "Memory Usage Over Time",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "go_memstats_heap_alloc_bytes",
+            "legendFormat": "Heap Allocated"
+          },
+          {
+            "expr": "go_memstats_heap_inuse_bytes",
+            "legendFormat": "Heap In Use"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "bytes"
+          }
+        },
+        "gridPos": {"h": 8, "w": 8, "x": 8, "y": 14}
+      },
+      {
+        "id": 10,
+        "title": "Go Runtime Stats",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "go_goroutines",
+            "legendFormat": "Goroutines"
+          },
+          {
+            "expr": "go_threads",
+            "legendFormat": "OS Threads"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 8, "x": 16, "y": 14}
+      },
+      {
+        "id": 11,
+        "title": "Token Operations",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "sum by (operation) (auth_service_token_operations_total)",
+            "legendFormat": "{{operation}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 22}
+      },
+      {
+        "id": 12,
+        "title": "Database Operations",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "sum by (operation, result) (auth_service_mongo_operations_total)",
+            "legendFormat": "{{operation}} - {{result}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 22}
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "refresh": "5s"
+  },
+  "overwrite": true
+}

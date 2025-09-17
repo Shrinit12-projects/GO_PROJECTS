@@ -1,0 +1,217 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Auth Service - Security & Alerts Dashboard",
+    "tags": ["security", "alerts", "auth", "monitoring"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Failed Login Attempts (Security Alert)",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "increase(auth_service_login_attempts_total{result=\"failure\"}[1m])",
+            "legendFormat": "Failed Logins/min"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 3},
+                {"color": "red", "value": 10}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
+      },
+      {
+        "id": 2,
+        "title": "Authentication Success Rate SLA",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "(sum(rate(auth_service_login_attempts_total{result=\"success\"}[5m])) / sum(rate(auth_service_login_attempts_total[5m]))) * 100",
+            "legendFormat": "Success Rate %"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": null},
+                {"color": "yellow", "value": 95},
+                {"color": "green", "value": 99}
+              ]
+            },
+            "unit": "percent",
+            "decimals": 2
+          }
+        },
+        "gridPos": {"h": 8, "w": 6, "x": 12, "y": 0}
+      },
+      {
+        "id": 3,
+        "title": "Service Availability (99.9% SLA)",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "(sum(rate(auth_service_http_requests_total{status_code!~\"5..\"}[5m])) / sum(rate(auth_service_http_requests_total[5m]))) * 100",
+            "legendFormat": "Availability %"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": null},
+                {"color": "yellow", "value": 99},
+                {"color": "green", "value": 99.9}
+              ]
+            },
+            "unit": "percent",
+            "decimals": 3
+          }
+        },
+        "gridPos": {"h": 8, "w": 6, "x": 18, "y": 0}
+      },
+      {
+        "id": 4,
+        "title": "Token Security Operations",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(auth_service_token_operations_total{operation=\"blacklist\"}[5m])",
+            "legendFormat": "Token Blacklists/sec"
+          },
+          {
+            "expr": "rate(auth_service_token_operations_total{operation=\"validate\"}[5m])",
+            "legendFormat": "Token Validations/sec"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
+      },
+      {
+        "id": 5,
+        "title": "Database Connection Health",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(auth_service_mongo_operations_total{result=\"error\"}[5m])",
+            "legendFormat": "MongoDB Errors/sec"
+          },
+          {
+            "expr": "rate(auth_service_redis_operations_total{result=\"error\"}[5m])",
+            "legendFormat": "Redis Errors/sec"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 0.1},
+                {"color": "red", "value": 1}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}
+      },
+      {
+        "id": 6,
+        "title": "High Response Time Alert (>1s)",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(auth_service_http_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "P95 Response Time"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 0.5},
+                {"color": "red", "value": 1}
+              ]
+            },
+            "unit": "s",
+            "decimals": 3
+          }
+        },
+        "gridPos": {"h": 8, "w": 6, "x": 0, "y": 16}
+      },
+      {
+        "id": 7,
+        "title": "Memory Usage Alert (>500MB)",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "go_memstats_heap_alloc_bytes / 1024 / 1024",
+            "legendFormat": "Heap Memory MB"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 200},
+                {"color": "red", "value": 500}
+              ]
+            },
+            "unit": "decbytes",
+            "decimals": 1
+          }
+        },
+        "gridPos": {"h": 8, "w": 6, "x": 6, "y": 16}
+      },
+      {
+        "id": 8,
+        "title": "Error Rate Spike Detection",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "sum(rate(auth_service_http_requests_total{status_code=~\"4..|5..\"}[1m])) / sum(rate(auth_service_http_requests_total[1m])) * 100",
+            "legendFormat": "Error Rate % (1min)"
+          },
+          {
+            "expr": "sum(rate(auth_service_http_requests_total{status_code=~\"4..|5..\"}[5m])) / sum(rate(auth_service_http_requests_total[5m])) * 100",
+            "legendFormat": "Error Rate % (5min)"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 1},
+                {"color": "red", "value": 5}
+              ]
+            },
+            "unit": "percent"
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16}
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "refresh": "5s"
+  },
+  "overwrite": true
+}
