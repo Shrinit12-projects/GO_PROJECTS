@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"auth-service/internal/metrics"
 	"auth-service/internal/models"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -83,6 +84,11 @@ func (r *UsersRepository) ExistsByEmail(ctx context.Context, email string) (bool
 func (r *UsersRepository) FindByEmail(ctx context.Context, email string) (models.User, error) {
 	var u models.User
 	err := r.collection.FindOne(ctx, bson.M{"email": email}).Decode(&u)
+	if err != nil {
+		metrics.MongoOperationsTotal.WithLabelValues("find", "users", "error").Inc()
+	} else {
+		metrics.MongoOperationsTotal.WithLabelValues("find", "users", "success").Inc()
+	}
 	return u, err
 }
 

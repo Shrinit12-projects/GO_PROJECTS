@@ -6,8 +6,10 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+	"time"
 
 	"auth-service/internal/config"
+	"auth-service/internal/metrics"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/redis/go-redis/v9"
@@ -25,6 +27,12 @@ const (
 // On success it sets "sub" and "jti" in the request context for handlers to consume.
 func RequireAuth(cfg *config.Config, redisClient *redis.Client, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		defer func() {
+			metrics.JWTValidationDuration.Observe(time.Since(start).Seconds())
+			metrics.TokenOperationsTotal.WithLabelValues("validate").Inc()
+		}()
+
 		auth := r.Header.Get("Authorization")
 		if auth == "" {
 			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "missing_authorization"})

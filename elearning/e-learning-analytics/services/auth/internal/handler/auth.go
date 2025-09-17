@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"auth-service/internal/config"
+	"auth-service/internal/metrics"
 	"auth-service/internal/middleware"
 	"auth-service/internal/models"
 	"auth-service/internal/services"
@@ -79,6 +80,9 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Record successful registration
+	metrics.UserRegistrationsTotal.Inc()
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	_ = json.NewEncoder(w).Encode(map[string]string{"user_id": userID})
@@ -113,12 +117,16 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	tokens, err := h.svc.Login(ctx, req)
 	if err != nil {
 		if errors.Is(err, services.ErrInvalidCredentials) {
+			metrics.LoginAttemptsTotal.WithLabelValues("failure").Inc()
 			httpError(w, http.StatusUnauthorized, "invalid_credentials", err.Error())
 			return
 		}
 		httpError(w, http.StatusInternalServerError, "internal", err.Error())
 		return
 	}
+
+	// Record successful login
+	metrics.LoginAttemptsTotal.WithLabelValues("success").Inc()
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(tokens)
@@ -148,6 +156,10 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 		httpError(w, http.StatusInternalServerError, "internal", err.Error())
 		return
 	}
+
+	// Record token blacklist operation
+	metrics.TokenOperationsTotal.WithLabelValues("blacklist").Inc()
+
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -180,6 +192,10 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 		httpError(w, http.StatusUnauthorized, "invalid_refresh", err.Error())
 		return
 	}
+
+	// Record token refresh operation
+	metrics.TokenOperationsTotal.WithLabelValues("refresh").Inc()
+
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(toks)
 }

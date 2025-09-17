@@ -17,6 +17,9 @@ COPY . .
 # Generate swagger docs
 RUN go run github.com/swaggo/swag/cmd/swag@latest init
 
+# Fix incompatible fields in generated docs
+RUN sed -i '/LeftDelim:/d; /RightDelim:/d' docs/docs.go
+
 # Build binary
 RUN CGO_ENABLED=0 GOOS=linux go build -o auth-service .
 

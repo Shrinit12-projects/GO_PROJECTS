@@ -12,6 +12,7 @@ import (
 	"auth-service/internal/middleware"
 
 	httpSwagger "github.com/swaggo/http-swagger"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -75,6 +76,24 @@ func (s *Server) Shutdown(ctx context.Context) error {
 func (s *Server) registerRoutes() {
 	// health
 	s.mux.HandleFunc("/health", handler.HealthHandler).Methods("GET")
+
+	// metrics (exclude from logging middleware to avoid recursion)
+	metricsHandler := promhttp.Handler()
+	s.mux.Handle("/metrics", metricsHandler).Methods("GET")
+
+	// debug endpoint
+	s.mux.HandleFunc("/debug", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("Debug: Server is running"))
+	}).Methods("GET")
+
+	// List all routes for debugging
+	s.mux.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
+		pathTemplate, _ := route.GetPathTemplate()
+		methods, _ := route.GetMethods()
+		log.Printf("Route: %s %v", pathTemplate, methods)
+		return nil
+	})
 
 	// swagger
 	s.mux.PathPrefix("/swagger/").Handler(httpSwagger.WrapHandler)
