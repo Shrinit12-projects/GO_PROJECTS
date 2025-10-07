@@ -169,7 +169,7 @@
           {
             "expr": "go_threads",
             "legendFormat": "OS Threads"
-          }
+          } 
         ],
         "gridPos": {"h": 8, "w": 8, "x": 16, "y": 14}
       },
